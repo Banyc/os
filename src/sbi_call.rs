@@ -11,11 +11,7 @@ fn sbi_call(ext: &Extension) -> Result<isize, SbiError> {
         Extension::Base(f) => f.id(),
         _ => 0,
     };
-    let arg0 = match ext {
-        Extension::Base(BaseFunction::ProbeExtension { extension_id }) => *extension_id,
-        Extension::SetTimer { stime_value } => *stime_value as isize,
-        _ => 0,
-    };
+    let arg0 = ext.arg0();
     let arg1: isize = 0;
 
     unsafe {
@@ -38,14 +34,8 @@ fn sbi_call(ext: &Extension) -> Result<isize, SbiError> {
 #[inline(always)]
 pub fn legacy_sbi_call(ext: &LegacyExtension) -> Result<isize, isize> {
     let mut err_val = 0;
-    let e_id = match ext {
-        LegacyExtension::ConsolePutChar { .. } => 0x1,
-        LegacyExtension::ConsoleGetChar => 0x2,
-    };
-    let arg0 = match ext {
-        LegacyExtension::ConsolePutChar { ch } => *ch as isize,
-        _ => 0,
-    };
+    let e_id = ext.id();
+    let arg0 = ext.arg0();
 
     unsafe {
         asm!(
@@ -100,6 +90,22 @@ pub enum LegacyExtension {
     ConsoleGetChar,            // 0x2
 }
 
+impl LegacyExtension {
+    fn id(&self) -> i32 {
+        match self {
+            LegacyExtension::ConsolePutChar { .. } => 0x1,
+            LegacyExtension::ConsoleGetChar => 0x2,
+        }
+    }
+
+    fn arg0(&self) -> isize {
+        match self {
+            LegacyExtension::ConsolePutChar { ch } => *ch as isize,
+            _ => 0,
+        }
+    }
+}
+
 pub enum Extension {
     Base(BaseFunction),            // 0x10
     SetTimer { stime_value: u64 }, // 0x54494D45
@@ -114,6 +120,15 @@ impl Extension {
             Extension::SetTimer { .. } => 0x54494D45,
             Extension::SendIpi { .. } => 0x735049,
             Extension::Shutdown => 0x53525354,
+        }
+    }
+
+    fn arg0(&self) -> isize {
+        match self {
+            Extension::Base(f) => f.arg0(),
+            Extension::SetTimer { stime_value } => *stime_value as isize,
+            Extension::SendIpi { hart_mask } => *hart_mask as isize,
+            Extension::Shutdown => 0,
         }
     }
 }
@@ -138,6 +153,13 @@ impl BaseFunction {
             BaseFunction::GetMVendorId => 4,
             BaseFunction::GetMArchId => 5,
             BaseFunction::GetMImpId => 6,
+        }
+    }
+
+    fn arg0(&self) -> isize {
+        match self {
+            BaseFunction::ProbeExtension { extension_id } => *extension_id,
+            _ => 0,
         }
     }
 }
