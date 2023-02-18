@@ -22,5 +22,6 @@
 ## References
 
 - x86: <https://os.phil-opp.com/>
+- RISC-V OS demo: <https://github.com/dazhi0619/myos>
+- RISC-V SBI Spec: <https://github.com/riscv-non-isa/riscv-sbi-doc/blob/master/riscv-sbi.adoc>
 - RISC-V: <https://osblog.stephenmarz.com/index.html>
-- SBI Spec: <https://github.com/riscv-non-isa/riscv-sbi-doc/blob/master/riscv-sbi.adoc>
