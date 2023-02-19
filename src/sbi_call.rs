@@ -163,14 +163,3 @@ impl BaseFunction {
         }
     }
 }
-
-pub fn print(s: &str) {
-    for ch in s.bytes() {
-        let _ = legacy_sbi_call(&LegacyExtension::ConsolePutChar { ch });
-    }
-}
-
-pub fn println(s: &str) {
-    print(s);
-    print("\n");
-}
