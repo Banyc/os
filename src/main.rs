@@ -15,7 +15,6 @@ global_asm!(include_str!("asm/_start.asm"));
 #[no_mangle]
 pub extern "C" fn main() {
     sbi_call::println(HELLO);
-    // sbi_call::shutdown();
 }
 
 /// - This function is called on panic.

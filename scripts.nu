@@ -22,7 +22,7 @@ def run [] {
     build
     qemu-system-riscv64 -M virt -kernel target/riscv64gc-unknown-none-elf/debug/os -nographic
 }
-    
+
 def debug [] {
     build
     qemu-system-riscv64 -M virt -kernel target/riscv64gc-unknown-none-elf/debug/os -nographic -s -S
