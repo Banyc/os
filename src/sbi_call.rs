@@ -3,7 +3,7 @@
 use core::arch::asm;
 
 #[inline(always)]
-fn sbi_call(ext: &Extension) -> Result<isize, SbiError> {
+pub fn sbi_call(ext: &Extension) -> Result<isize, SbiError> {
     let mut error = 0;
     let mut value = 0;
     let e_id = ext.id();
