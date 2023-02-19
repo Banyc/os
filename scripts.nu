@@ -12,6 +12,7 @@ def install-tools [] {
     cargo install cargo-binutils
     rustup component add llvm-tools-preview
     brew install qemu
+    brew install gdb
 }
 
 def readelf [] {
@@ -30,4 +31,8 @@ def debug [] {
 
 def ll-db [] {
     lldb target/riscv64gc-unknown-none-elf/debug/os -o "gdb-remote localhost:1234"
+}
+
+def g-db [] {
+    rust-gdb target/riscv64gc-unknown-none-elf/debug/os -ex "target remote localhost:1234"
 }
