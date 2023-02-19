@@ -23,5 +23,6 @@
 
 - x86: <https://os.phil-opp.com/>
 - RISC-V OS demo: <https://github.com/dazhi0619/myos>
+- QEMU RISC-V emulator: <https://www.qemu.org/docs/master/system/target-riscv.html>
 - RISC-V SBI Spec: <https://github.com/riscv-non-isa/riscv-sbi-doc/blob/master/riscv-sbi.adoc>
 - RISC-V: <https://osblog.stephenmarz.com/index.html>
