@@ -1,18 +1,16 @@
-#![allow(unused)]
-
 use core::arch::asm;
 
 #[inline(always)]
 pub fn sbi_call(ext: &Extension) -> Result<isize, SbiError> {
-    let mut error = 0;
-    let mut value = 0;
+    let mut error: isize;
+    let mut value: isize;
     let e_id = ext.id();
     let f_id = match ext {
         Extension::Base(f) => f.id(),
         _ => 0,
     };
     let arg0 = ext.arg0();
-    let arg1: isize = 0;
+    let arg1: isize = ext.arg1();
 
     unsafe {
         asm!(
@@ -33,7 +31,7 @@ pub fn sbi_call(ext: &Extension) -> Result<isize, SbiError> {
 
 #[inline(always)]
 pub fn legacy_sbi_call(ext: &LegacyExtension) -> Result<isize, isize> {
-    let mut err_val = 0;
+    let mut err_val: isize;
     let e_id = ext.id();
     let arg0 = ext.arg0();
 
@@ -54,10 +52,11 @@ pub fn legacy_sbi_call(ext: &LegacyExtension) -> Result<isize, isize> {
 
 #[no_mangle]
 pub fn shutdown() -> ! {
-    sbi_call(&Extension::Shutdown);
+    sbi_call(&Extension::Shutdown).expect("Failed to shutdown");
     panic!("Should have been shutdown")
 }
 
+#[derive(Debug)]
 pub enum SbiError {
     Failed = -1,
     NotSupported = -2,
@@ -129,6 +128,17 @@ impl Extension {
             Extension::SetTimer { stime_value } => *stime_value as isize,
             Extension::SendIpi { hart_mask } => *hart_mask as isize,
             Extension::Shutdown => 0,
+        }
+    }
+
+    fn arg1(&self) -> isize {
+        match self {
+            Extension::SetTimer { stime_value } => match isize::BITS {
+                32 => (*stime_value >> 32) as isize,
+                64 => 0,
+                _ => panic!("Unsupported architecture"),
+            },
+            _ => 0,
         }
     }
 }
