@@ -1,5 +1,6 @@
 #![no_std] // don't link the Rust standard library
 
+pub mod exception;
 pub mod io;
 pub mod sbi_call;
 

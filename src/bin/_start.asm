@@ -2,6 +2,7 @@
 .global _start          # mark _start as a global symbol (exported symbol)
 _start:                 # start of the _start function
     la sp, bootstacktop # set the stack pointer to point to the top of the boot stack
+
     call main           # call the main function
 
     # Shutdown

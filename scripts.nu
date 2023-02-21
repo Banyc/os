@@ -4,7 +4,7 @@
 
 def build [] {
     cargo build
-    # rust-objcopy target/riscv64gc-unknown-none-elf/debug/os --strip-all -O binary target/riscv64gc-unknown-none-elf/debug/os.bin
+    # rust-objcopy target/riscv64gc-unknown-none-elf/debug/main --strip-all -O binary target/riscv64gc-unknown-none-elf/debug/main.bin
 }
 
 def install-tools [] {
@@ -16,23 +16,23 @@ def install-tools [] {
 }
 
 def readelf [] {
-    rust-objdump -d target/riscv64gc-unknown-none-elf/debug/os
+    rust-objdump -d target/riscv64gc-unknown-none-elf/debug/main
 }
 
 def run [] {
     build
-    qemu-system-riscv64 -M virt -kernel target/riscv64gc-unknown-none-elf/debug/os -nographic
+    qemu-system-riscv64 -M virt -kernel target/riscv64gc-unknown-none-elf/debug/main -nographic
 }
 
 def debug [] {
     build
-    qemu-system-riscv64 -M virt -kernel target/riscv64gc-unknown-none-elf/debug/os -nographic -s -S
+    qemu-system-riscv64 -M virt -kernel target/riscv64gc-unknown-none-elf/debug/main -nographic -s -S
 }
 
 def ll-db [] {
-    lldb target/riscv64gc-unknown-none-elf/debug/os -o "gdb-remote localhost:1234"
+    lldb target/riscv64gc-unknown-none-elf/debug/main -o "gdb-remote localhost:1234"
 }
 
 def g-db [] {
-    rust-gdb target/riscv64gc-unknown-none-elf/debug/os -ex "target remote localhost:1234"
+    rust-gdb target/riscv64gc-unknown-none-elf/debug/main -ex "target remote localhost:1234"
 }
