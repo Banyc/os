@@ -35,10 +35,16 @@ pub fn handle_exception() {
 
 fn handle_interrupt(interrupt: Interrupt) {
     println!("Interrupt: {:?}", interrupt);
+    if let Interrupt::Reserved { exception_code } = interrupt {
+        panic!("Reserved exception code: {}", exception_code);
+    }
 }
 
 fn handle_sync_exception(sync_exception: SyncException) {
     println!("Sync exception: {:?}", sync_exception);
+    if let SyncException::Reserved { exception_code } = sync_exception {
+        panic!("Reserved exception code: {}", exception_code);
+    }
     panic!("Not implemented");
 }
 
@@ -73,7 +79,8 @@ pub enum Interrupt {
     SupervisorSoftware,
     SupervisorTimer,
     SupervisorExternal,
-    Unknown { exception_code: usize },
+    Reserved { exception_code: usize },
+    DesignedForPlatformUse { exception_code: usize },
 }
 
 impl From<usize> for Interrupt {
@@ -82,7 +89,8 @@ impl From<usize> for Interrupt {
             1 => Interrupt::SupervisorSoftware,
             5 => Interrupt::SupervisorTimer,
             9 => Interrupt::SupervisorExternal,
-            _ => Interrupt::Unknown { exception_code },
+            0 | 2..=4 | 6..=8 | 10..=15 => Interrupt::Reserved { exception_code },
+            _ => Interrupt::DesignedForPlatformUse { exception_code },
         }
     }
 }
@@ -102,7 +110,8 @@ pub enum SyncException {
     InstructionPageFault,
     LoadPageFault,
     StoreOrAmoPageFault,
-    Unknown { exception_code: usize },
+    Reserved { exception_code: usize },
+    DesignedForPlatformUse { exception_code: usize },
 }
 
 impl From<usize> for SyncException {
@@ -121,7 +130,8 @@ impl From<usize> for SyncException {
             12 => SyncException::InstructionPageFault,
             13 => SyncException::LoadPageFault,
             15 => SyncException::StoreOrAmoPageFault,
-            _ => SyncException::Unknown { exception_code },
+            24..=31 | 48..=63 => SyncException::DesignedForPlatformUse { exception_code },
+            _ => SyncException::Reserved { exception_code },
         }
     }
 }
