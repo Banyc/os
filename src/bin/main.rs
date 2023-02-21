@@ -4,7 +4,7 @@
 use core::arch::asm;
 use core::arch::global_asm;
 
-use os::exception::setup_supervisor_exception_vector;
+use os::exception::setup_supervisor_exception_handler;
 use os::print;
 use os::println;
 
@@ -19,7 +19,7 @@ global_asm!(include_str!("_start.asm"));
 pub extern "C" fn main() {
     println!("{}", HELLO);
 
-    setup_supervisor_exception_vector();
+    setup_supervisor_exception_handler();
 
     // We are at supervisor mode now.
     let sstatus: usize;
