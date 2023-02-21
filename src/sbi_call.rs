@@ -10,7 +10,7 @@ pub fn sbi_call(ext: &Extension) -> Result<isize, SbiError> {
         _ => 0,
     };
     let arg0 = ext.arg0();
-    let arg1: isize = ext.arg1();
+    let arg1 = ext.arg1();
 
     unsafe {
         asm!(
@@ -54,6 +54,14 @@ pub fn legacy_sbi_call(ext: &LegacyExtension) -> Result<isize, isize> {
 pub fn shutdown() -> ! {
     sbi_call(&Extension::Shutdown).expect("Failed to shutdown");
     panic!("Should have been shutdown")
+}
+
+pub fn set_timer(stime_value: u64) -> Result<(), ()> {
+    let res = sbi_call(&Extension::SetTimer { stime_value });
+    match res {
+        Ok(_) => Ok(()),
+        Err(_) => Err(()),
+    }
 }
 
 #[derive(Debug)]

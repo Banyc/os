@@ -4,9 +4,11 @@
 use core::arch::asm;
 use core::arch::global_asm;
 
+use os::exception::enable_supervisor_interrupt;
 use os::exception::setup_supervisor_exception_handler;
 use os::print;
 use os::println;
+use os::sbi_call;
 
 static HELLO: &str = "Hello World!";
 
@@ -17,9 +19,8 @@ global_asm!(include_str!("_start.asm"));
 /// - `extern "C"` ensures the Rust compiler uses the C calling convention for this function.
 #[no_mangle]
 pub extern "C" fn main() {
+    println!();
     println!("{}", HELLO);
-
-    setup_supervisor_exception_handler();
 
     // We are at supervisor mode now.
     let sstatus: usize;
@@ -27,6 +28,8 @@ pub extern "C" fn main() {
         asm!("csrr {}, sstatus", out(reg) sstatus);
     }
     println!("sstatus: {:#x}", sstatus);
+
+    setup_supervisor_exception_handler();
 
     // Accessing machine mode CSR in supervisor mode will cause an exception.
     unsafe {
@@ -40,5 +43,38 @@ pub extern "C" fn main() {
     }
     println!("sstatus: {:#x}", sstatus);
 
-    panic!("Some panic message");
+    // Enable timer interrupt.
+    let sie_before: usize;
+    unsafe {
+        asm!("csrr {}, sie", out(reg) sie_before);
+    }
+    enable_supervisor_interrupt(os::exception::Interrupt::SupervisorTimer);
+    let sie_after: usize;
+    unsafe {
+        asm!("csrr {}, sie", out(reg) sie_after);
+    }
+    println!("sie: {:#x} -> {:#x}", sie_before, sie_after);
+
+    // Trigger timer interrupt.
+    sbi_call::set_timer(0).expect("Failed to set timer");
+
+    // Set sepc to the pit.
+    unsafe {
+        asm!("la t0, user_pit", "csrw sepc, t0",);
+    }
+
+    // Go to user mode.
+    // Send the PC to the pit.
+    unsafe {
+        asm!("sret");
+    }
+
+    panic!("Should not reach here");
+}
+
+#[no_mangle]
+pub extern "C" fn user_pit() -> ! {
+    loop {
+        // Wait for interrupt.
+    }
 }

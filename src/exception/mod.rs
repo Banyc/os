@@ -8,10 +8,21 @@ pub fn setup_supervisor_exception_handler() {
     }
 }
 
+pub fn enable_supervisor_interrupt(interrupt: Interrupt) {
+    let sie: usize;
+    unsafe {
+        asm!("csrr {}, sie", out(reg) sie);
+    }
+    let sie = sie | (1 << interrupt.exception_code() as usize);
+    unsafe {
+        asm!("csrw sie, {}", in(reg) sie);
+    }
+}
+
 global_asm!(include_str!("entry.asm"));
 
 #[no_mangle]
-pub fn handle_exception() {
+pub extern "C" fn handle_exception() {
     println!("Exception");
 
     let scause: usize;
@@ -38,6 +49,16 @@ fn handle_interrupt(interrupt: Interrupt) {
     println!("Interrupt: {:?}", interrupt);
     if let Interrupt::Reserved { exception_code } = interrupt {
         panic!("Reserved exception code: {}", exception_code);
+    }
+
+    // Clear pending bit.
+    let sie: usize;
+    unsafe {
+        asm!("csrr {}, sie", out(reg) sie);
+    }
+    let sie = sie & !(1 << interrupt.exception_code() as usize);
+    unsafe {
+        asm!("csrw sie, {}", in(reg) sie);
     }
 }
 
@@ -103,6 +124,18 @@ pub enum Interrupt {
     SupervisorExternal,
     Reserved { exception_code: usize },
     DesignedForPlatformUse { exception_code: usize },
+}
+
+impl Interrupt {
+    pub fn exception_code(&self) -> usize {
+        match self {
+            Interrupt::SupervisorSoftware => 1,
+            Interrupt::SupervisorTimer => 5,
+            Interrupt::SupervisorExternal => 9,
+            Interrupt::Reserved { exception_code } => *exception_code,
+            Interrupt::DesignedForPlatformUse { exception_code } => *exception_code,
+        }
+    }
 }
 
 impl From<usize> for Interrupt {
