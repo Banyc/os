@@ -33,5 +33,12 @@ pub extern "C" fn main() {
         asm!("csrr t0, mstatus");
     }
 
+    // We are still at supervisor mode now.
+    let sstatus: usize;
+    unsafe {
+        asm!("csrr {}, sstatus", out(reg) sstatus);
+    }
+    println!("sstatus: {:#x}", sstatus);
+
     panic!("Some panic message");
 }

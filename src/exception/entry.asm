@@ -42,5 +42,5 @@ exception_entry:
 
     addi sp, sp, 17*REGBYTES
 
-    # Return to `mepc`
-    mret
+    # Return to `sepc`
+    sret

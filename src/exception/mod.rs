@@ -4,8 +4,7 @@ use crate::{print, println};
 
 pub fn setup_supervisor_exception_handler() {
     unsafe {
-        asm!("la t0, exception_entry");
-        asm!("csrw stvec, t0");
+        asm!("la t0, exception_entry", "csrw stvec, t0",);
     }
 }
 
@@ -31,6 +30,8 @@ pub fn handle_exception() {
         Exception::Interrupt(interrupt) => handle_interrupt(interrupt),
         Exception::Sync(sync_exception) => handle_sync_exception(sync_exception),
     }
+
+    println!("Exception handled");
 }
 
 fn handle_interrupt(interrupt: Interrupt) {
@@ -45,7 +46,28 @@ fn handle_sync_exception(sync_exception: SyncException) {
     if let SyncException::Reserved { exception_code } = sync_exception {
         panic!("Reserved exception code: {}", exception_code);
     }
-    panic!("Not implemented");
+    increment_sepc();
+}
+
+fn increment_sepc() {
+    println!("Incrementing sepc");
+
+    // Set PC to the next instruction.
+    let instruction_size = 4;
+    unsafe {
+        asm!(
+            "csrr t0, sepc",
+            "add t0, t0, {}",
+            "csrw sepc, t0",
+            in(reg) instruction_size,
+        );
+    }
+
+    let sepc: usize;
+    unsafe {
+        asm!("csrr {}, sepc", out(reg) sepc);
+    }
+    println!("sepc: {:#x}", sepc);
 }
 
 pub struct Cause(usize);
