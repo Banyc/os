@@ -38,12 +38,10 @@ pub extern "C" fn main() {
         asm!("csrr t0, mstatus");
     }
 
-    // We are still at supervisor mode now.
-    let sstatus: usize;
+    // Breakpoint
     unsafe {
-        asm!("csrr {}, sstatus", out(reg) sstatus);
+        asm!("ebreak");
     }
-    println!("sstatus: {:#x}", sstatus);
 
     // Enable timer interrupt.
     let sie_before: usize;

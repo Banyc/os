@@ -68,10 +68,15 @@ fn handle_sync_exception(sync_exception: SyncException) {
     if let SyncException::Reserved { exception_code } = sync_exception {
         panic!("Reserved exception code: {}", exception_code);
     }
-    increment_sepc();
+    if let SyncException::Trap(Trap::Breakpoint) = sync_exception {
+        // `ebreak` is just two-bytes long.
+        increment_sepc(2);
+        return;
+    }
+    increment_sepc(4);
 }
 
-fn increment_sepc() {
+fn increment_sepc(instruction_size: usize) {
     println!("Incrementing sepc");
 
     let sepc_before: usize;
@@ -80,7 +85,6 @@ fn increment_sepc() {
     }
 
     // Set PC to the next instruction.
-    let instruction_size = 4;
     unsafe {
         asm!(
             "csrr t0, sepc",
