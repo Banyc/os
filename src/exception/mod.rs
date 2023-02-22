@@ -159,19 +159,8 @@ impl From<usize> for Interrupt {
 
 #[derive(Debug)]
 pub enum SyncException {
-    InstructionAddressMisaligned,
-    InstructionAccessFault,
-    IllegalInstruction,
-    Breakpoint,
-    LoadAddressMisaligned,
-    LoadAccessFault,
-    StoreOrAmoAddressMisaligned,
-    StoreOrAmoAccessFault,
-    EnvironmentCallFromUMode,
-    EnvironmentCallFromSMode,
-    InstructionPageFault,
-    LoadPageFault,
-    StoreOrAmoPageFault,
+    Trap(Trap),
+    Fault(Fault),
     Reserved { exception_code: usize },
     DesignedForPlatformUse { exception_code: usize },
 }
@@ -179,23 +168,44 @@ pub enum SyncException {
 impl From<usize> for SyncException {
     fn from(exception_code: usize) -> Self {
         match exception_code {
-            0 => SyncException::InstructionAddressMisaligned,
-            1 => SyncException::InstructionAccessFault,
-            2 => SyncException::IllegalInstruction,
-            3 => SyncException::Breakpoint,
-            4 => SyncException::LoadAddressMisaligned,
-            5 => SyncException::LoadAccessFault,
-            6 => SyncException::StoreOrAmoAddressMisaligned,
-            7 => SyncException::StoreOrAmoAccessFault,
-            8 => SyncException::EnvironmentCallFromUMode,
-            9 => SyncException::EnvironmentCallFromSMode,
-            12 => SyncException::InstructionPageFault,
-            13 => SyncException::LoadPageFault,
-            15 => SyncException::StoreOrAmoPageFault,
+            0 => SyncException::Fault(Fault::InstructionAddressMisaligned),
+            1 => SyncException::Fault(Fault::InstructionAccessFault),
+            2 => SyncException::Fault(Fault::IllegalInstruction),
+            3 => SyncException::Trap(Trap::Breakpoint),
+            4 => SyncException::Fault(Fault::LoadAddressMisaligned),
+            5 => SyncException::Fault(Fault::LoadAccessFault),
+            6 => SyncException::Fault(Fault::StoreOrAmoAddressMisaligned),
+            7 => SyncException::Fault(Fault::StoreOrAmoAccessFault),
+            8 => SyncException::Trap(Trap::EnvironmentCallFromUMode),
+            9 => SyncException::Trap(Trap::EnvironmentCallFromSMode),
+            12 => SyncException::Fault(Fault::InstructionPageFault),
+            13 => SyncException::Fault(Fault::LoadPageFault),
+            15 => SyncException::Fault(Fault::StoreOrAmoPageFault),
             24..=31 | 48..=63 => SyncException::DesignedForPlatformUse { exception_code },
             _ => SyncException::Reserved { exception_code },
         }
     }
+}
+
+#[derive(Debug)]
+pub enum Trap {
+    Breakpoint,
+    EnvironmentCallFromUMode,
+    EnvironmentCallFromSMode,
+}
+
+#[derive(Debug)]
+pub enum Fault {
+    InstructionAddressMisaligned,
+    InstructionAccessFault,
+    IllegalInstruction,
+    LoadAddressMisaligned,
+    LoadAccessFault,
+    StoreOrAmoAddressMisaligned,
+    StoreOrAmoAccessFault,
+    InstructionPageFault,
+    LoadPageFault,
+    StoreOrAmoPageFault,
 }
 
 impl From<Cause> for Exception {
