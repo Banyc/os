@@ -9,6 +9,7 @@ use os::exception::setup_supervisor_exception_handler;
 use os::print;
 use os::println;
 use os::sbi_call;
+use os::Sstatus;
 
 static HELLO: &str = "Hello World!";
 
@@ -27,7 +28,8 @@ pub extern "C" fn main() {
     unsafe {
         asm!("csrr {}, sstatus", out(reg) sstatus);
     }
-    println!("sstatus: {:#x}", sstatus);
+    let sstatus = Sstatus(sstatus);
+    println!("{:#x?}", sstatus);
 
     setup_supervisor_exception_handler();
 

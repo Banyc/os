@@ -1,6 +1,6 @@
 use core::arch::{asm, global_asm};
 
-use crate::{print, println};
+use crate::{print, println, Sstatus};
 
 pub fn setup_supervisor_exception_handler() {
     unsafe {
@@ -204,7 +204,7 @@ impl From<Cause> for Exception {
 
 #[derive(Debug)]
 pub struct ExceptionFrame {
-    pub sstatus: usize,
+    pub sstatus: Sstatus,
     pub sepc: usize,
     pub stval: usize,
     pub scause: Exception,
@@ -216,6 +216,7 @@ impl ExceptionFrame {
         unsafe {
             asm!("csrr {}, sstatus", out(reg) sstatus);
         }
+        let sstatus = Sstatus(sstatus);
 
         let sepc: usize;
         unsafe {
