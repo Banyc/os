@@ -46,7 +46,13 @@ fn handle_interrupt(interrupt: Interrupt) {
         panic!("Reserved exception code: {}", exception_code);
     }
 
-    // Clear pending bit.
+    let sip: usize;
+    unsafe {
+        asm!("csrr {}, sip", out(reg) sip);
+    }
+    println!("sip: {:#x}", sip);
+
+    // Disable interrupt.
     let sie: usize;
     unsafe {
         asm!("csrr {}, sie", out(reg) sie);
