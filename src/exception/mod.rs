@@ -68,6 +68,10 @@ fn handle_sync_exception(sync_exception: SyncException) {
     if let SyncException::Reserved { exception_code } = sync_exception {
         panic!("Reserved exception code: {}", exception_code);
     }
+    if let SyncException::Trap(Trap::EnvironmentCallFromUMode) = sync_exception {
+        panic!("Not implemented: EnvironmentCallFromUMode");
+    }
+
     if let SyncException::Trap(Trap::Breakpoint) = sync_exception {
         // `ebreak` is just two-bytes long.
         increment_sepc(2);

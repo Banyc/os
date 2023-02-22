@@ -78,7 +78,14 @@ pub extern "C" fn main() {
 
 #[no_mangle]
 pub extern "C" fn user_pit() -> ! {
+    unsafe {
+        asm!("ebreak");
+        asm!("ecall");
+    }
+
     loop {
-        // Wait for interrupt.
+        unsafe {
+            asm!("wfi");
+        }
     }
 }
