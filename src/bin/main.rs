@@ -60,7 +60,11 @@ pub extern "C" fn main() {
 
     // Set sepc to the pit.
     unsafe {
-        asm!("la t0, user_pit", "csrw sepc, t0",);
+        asm!(
+            "la t0, user_pit",
+            "csrw sepc, t0",
+            //
+        );
     }
 
     // Go to user mode.

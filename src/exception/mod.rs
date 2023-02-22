@@ -4,7 +4,11 @@ use crate::{print, println};
 
 pub fn setup_supervisor_exception_handler() {
     unsafe {
-        asm!("la t0, exception_entry", "csrw stvec, t0",);
+        asm!(
+            "la t0, exception_entry",
+            "csrw stvec, t0",
+            //
+        );
     }
 }
 
@@ -25,19 +29,10 @@ global_asm!(include_str!("entry.asm"));
 pub extern "C" fn handle_exception() {
     println!("Exception");
 
-    let scause: usize;
-    let sepc: usize;
-    unsafe {
-        asm!("csrr {}, scause", out(reg) scause);
-        asm!("csrr {}, sepc", out(reg) sepc);
-    }
-    let scause = Cause(scause);
+    let frame = ExceptionFrame::new();
+    println!("{:#x?}", frame);
 
-    println!("scause: {:#x}", scause.0);
-    println!("sepc: {:#x}", sepc);
-
-    let exception = Exception::from(scause);
-    match exception {
+    match frame.scause {
         Exception::Interrupt(interrupt) => handle_interrupt(interrupt),
         Exception::Sync(sync_exception) => handle_sync_exception(sync_exception),
     }
@@ -73,6 +68,11 @@ fn handle_sync_exception(sync_exception: SyncException) {
 fn increment_sepc() {
     println!("Incrementing sepc");
 
+    let sepc_before: usize;
+    unsafe {
+        asm!("csrr {}, sepc", out(reg) sepc_before);
+    }
+
     // Set PC to the next instruction.
     let instruction_size = 4;
     unsafe {
@@ -84,17 +84,18 @@ fn increment_sepc() {
         );
     }
 
-    let sepc: usize;
+    let sepc_after: usize;
     unsafe {
-        asm!("csrr {}, sepc", out(reg) sepc);
+        asm!("csrr {}, sepc", out(reg) sepc_after);
     }
-    println!("sepc: {:#x}", sepc);
+    println!("sepc: {:#x} -> {:#x}", sepc_before, sepc_after);
 }
 
+#[derive(Debug)]
 pub struct Cause(usize);
 
 impl Cause {
-    pub fn interrupt(&self) -> bool {
+    pub fn is_interrupt(&self) -> bool {
         match usize::BITS {
             32 => self.0 & 0x8000_0000 != 0,
             64 => self.0 & 0x8000_0000_0000_0000 != 0,
@@ -193,10 +194,51 @@ impl From<usize> for SyncException {
 
 impl From<Cause> for Exception {
     fn from(cause: Cause) -> Self {
-        if cause.interrupt() {
+        if cause.is_interrupt() {
             Exception::Interrupt(Interrupt::from(cause.exception_code()))
         } else {
             Exception::Sync(SyncException::from(cause.exception_code()))
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ExceptionFrame {
+    pub sstatus: usize,
+    pub sepc: usize,
+    pub stval: usize,
+    pub scause: Exception,
+}
+
+impl ExceptionFrame {
+    pub fn new() -> Self {
+        let sstatus: usize;
+        unsafe {
+            asm!("csrr {}, sstatus", out(reg) sstatus);
+        }
+
+        let sepc: usize;
+        unsafe {
+            asm!("csrr {}, sepc", out(reg) sepc);
+        }
+
+        let stval: usize;
+        unsafe {
+            asm!("csrr {}, stval", out(reg) stval);
+        }
+
+        let scause: usize;
+        unsafe {
+            asm!("csrr {}, scause", out(reg) scause);
+        }
+        let scause = Cause(scause);
+        let scause = Exception::from(scause);
+
+        ExceptionFrame {
+            sstatus,
+            sepc,
+            stval,
+            scause,
         }
     }
 }
