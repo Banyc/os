@@ -26,13 +26,13 @@
 
     .section .text
     .globl __exception_entry
-# Compose a Context and push it to the stack
+# Compose a RegisterContext and push it to the stack
 __exception_entry:
     # Swap sp from the pre-exception sp to the supervisor sp
     # - Why switching stacks: the thread stack might not be available
     # - ssratch: store the supervisor stack address
     csrrw   sp, sscratch, sp
-    # Allocate space for Context
+    # Allocate space for RegisterContext
     addi    sp, sp, -CONTEXT_SIZE * REG_SIZE
 
     # Save x registers
@@ -47,35 +47,14 @@ __exception_entry:
         .set    n, n + 1
     .endr
 
-    # Save CSRs
-    csrr    t0, sstatus
-    csrr    t1, sepc
-    SAVE    t0, 32
-    SAVE    t1, 33
-
     # Call handle_exception with the following arguments:
-    # context: &mut Context
+    # register_context: &mut RegisterContext
     mv      a0, sp
-    # scause: Scause
-    csrr    a1, scause
-    # stval: usize
-    csrr    a2, stval
     jal handle_exception
 
     .globl __restore
 # Exit from exception
-# a0 now points to the modified Context
 __restore:
-    # Reset sp by pointing to `*mut Context`
-    # - Why `a0`: `handle_exception` returns the modified Context in `a0`
-    mv      sp, a0
-
-    # Restore CSRs
-    LOAD    t0, 32
-    LOAD    t1, 33
-    csrw    sstatus, t0
-    csrw    sepc, t1
-
     # Write exception sp to sscratch
     addi    t0, sp, CONTEXT_SIZE * REG_SIZE
     csrw    sscratch, t0

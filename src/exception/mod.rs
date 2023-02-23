@@ -26,55 +26,36 @@ pub fn enable_supervisor_interrupt(interrupt: Interrupt) {
 global_asm!(include_str!("entry.asm"));
 
 #[no_mangle]
-pub extern "C" fn handle_exception(context: &mut Context) -> *mut Context {
+pub extern "C" fn handle_exception(register_context: &mut RegisterContext) {
     println!("Exception");
 
-    println!("{:#x?}", context);
+    let mut mut_context = ExceptionMutContext::new(register_context);
+    println!("{:#x?}", mut_context);
 
-    let frame = ExceptionFrame::new();
-    println!("{:#x?}", frame);
+    let immut_context = ExceptionImmutContext::new();
+    println!("{:#x?}", immut_context);
 
-    match frame.scause {
-        Exception::Interrupt(interrupt) => handle_interrupt(context, interrupt),
-        Exception::Sync(sync_exception) => handle_sync_exception(context, sync_exception),
+    match &immut_context.scause {
+        Exception::Interrupt(interrupt) => handle_interrupt(&mut mut_context, interrupt),
+        Exception::Sync(sync_exception) => handle_sync_exception(&mut mut_context, sync_exception),
     }
 
     println!("Exception handled");
-    context
 }
 
-#[repr(C)]
-#[derive(Debug)]
-pub struct Context {
-    pub x: [usize; 32],
-    pub sstatus: Sstatus,
-    pub sepc: usize,
-}
-
-fn handle_interrupt(_context: &mut Context, interrupt: Interrupt) {
+fn handle_interrupt(mut_context: &mut ExceptionMutContext, interrupt: &Interrupt) {
     println!("Interrupt: {:?}", interrupt);
     if let Interrupt::Reserved { exception_code } = interrupt {
         panic!("Reserved exception code: {}", exception_code);
     }
 
-    let sip: usize;
-    unsafe {
-        asm!("csrr {}, sip", out(reg) sip);
-    }
-    println!("sip: {:#x}", sip);
-
     // Disable interrupt.
-    let sie: usize;
-    unsafe {
-        asm!("csrr {}, sie", out(reg) sie);
-    }
+    let sie = mut_context.sie;
     let sie = sie & !(1 << interrupt.exception_code() as usize);
-    unsafe {
-        asm!("csrw sie, {}", in(reg) sie);
-    }
+    mut_context.sie = sie;
 }
 
-fn handle_sync_exception(context: &mut Context, sync_exception: SyncException) {
+fn handle_sync_exception(mut_context: &mut ExceptionMutContext, sync_exception: &SyncException) {
     println!("Sync exception: {:?}", sync_exception);
     if let SyncException::Reserved { exception_code } = sync_exception {
         panic!("Reserved exception code: {}", exception_code);
@@ -85,10 +66,10 @@ fn handle_sync_exception(context: &mut Context, sync_exception: SyncException) {
 
     if let SyncException::Trap(Trap::Breakpoint) = sync_exception {
         // `ebreak` is just two-bytes long.
-        context.sepc += 2;
+        mut_context.sepc += 2;
         return;
     }
-    context.sepc += 4;
+    mut_context.sepc += 4;
 }
 
 #[derive(Debug)]
@@ -212,26 +193,75 @@ impl From<Cause> for Exception {
     }
 }
 
+#[repr(C)]
 #[derive(Debug)]
-pub struct ExceptionFrame {
+pub struct RegisterContext {
+    pub x: [usize; 32],
+}
+
+#[derive(Debug)]
+pub struct ExceptionMutContext<'entry> {
+    pub register_context: &'entry mut RegisterContext,
+    pub sstatus: Sstatus,
+    pub sepc: usize,
+    pub sip: usize,
+    pub sie: usize,
+}
+
+impl<'entry> ExceptionMutContext<'entry> {
+    pub fn new(register_context: &'entry mut RegisterContext) -> Self {
+        // Read the context.
+        let sstatus: usize;
+        let sepc: usize;
+        let sip: usize;
+        let sie: usize;
+        unsafe {
+            asm!("csrr {}, sstatus", out(reg) sstatus);
+            asm!("csrr {}, sepc", out(reg) sepc);
+            asm!("csrr {}, sip", out(reg) sip);
+            asm!("csrr {}, sie", out(reg) sie);
+        }
+        let sstatus = Sstatus(sstatus);
+
+        Self {
+            register_context,
+            sstatus,
+            sepc,
+            sip,
+            sie,
+        }
+    }
+}
+
+impl Drop for ExceptionMutContext<'_> {
+    fn drop(&mut self) {
+        // Write the context.
+        unsafe {
+            asm!("csrw sstatus, {}", in(reg) self.sstatus.0);
+            asm!("csrw sepc, {}", in(reg) self.sepc);
+            asm!("csrw sip, {}", in(reg) self.sip);
+            asm!("csrw sie, {}", in(reg) self.sie);
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ExceptionImmutContext {
     pub stval: usize,
     pub scause: Exception,
 }
 
-impl ExceptionFrame {
+impl ExceptionImmutContext {
     pub fn new() -> Self {
+        // Read the context.
         let stval: usize;
-        unsafe {
-            asm!("csrr {}, stval", out(reg) stval);
-        }
-
         let scause: usize;
         unsafe {
+            asm!("csrr {}, stval", out(reg) stval);
             asm!("csrr {}, scause", out(reg) scause);
         }
-        let scause = Cause(scause);
-        let scause = Exception::from(scause);
+        let scause = Exception::from(Cause(scause));
 
-        ExceptionFrame { stval, scause }
+        ExceptionImmutContext { stval, scause }
     }
 }
