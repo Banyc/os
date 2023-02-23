@@ -5,7 +5,7 @@ use crate::{print, println, Sstatus};
 pub fn setup_supervisor_exception_handler() {
     unsafe {
         asm!(
-            "la t0, exception_entry",
+            "la t0, __exception_entry",
             "csrw stvec, t0",
             //
         );
@@ -26,21 +26,32 @@ pub fn enable_supervisor_interrupt(interrupt: Interrupt) {
 global_asm!(include_str!("entry.asm"));
 
 #[no_mangle]
-pub extern "C" fn handle_exception() {
+pub extern "C" fn handle_exception(context: &mut Context) -> *mut Context {
     println!("Exception");
+
+    println!("{:#x?}", context);
 
     let frame = ExceptionFrame::new();
     println!("{:#x?}", frame);
 
     match frame.scause {
-        Exception::Interrupt(interrupt) => handle_interrupt(interrupt),
-        Exception::Sync(sync_exception) => handle_sync_exception(sync_exception),
+        Exception::Interrupt(interrupt) => handle_interrupt(context, interrupt),
+        Exception::Sync(sync_exception) => handle_sync_exception(context, sync_exception),
     }
 
     println!("Exception handled");
+    context
 }
 
-fn handle_interrupt(interrupt: Interrupt) {
+#[repr(C)]
+#[derive(Debug)]
+pub struct Context {
+    pub x: [usize; 32],
+    pub sstatus: Sstatus,
+    pub sepc: usize,
+}
+
+fn handle_interrupt(_context: &mut Context, interrupt: Interrupt) {
     println!("Interrupt: {:?}", interrupt);
     if let Interrupt::Reserved { exception_code } = interrupt {
         panic!("Reserved exception code: {}", exception_code);
@@ -63,7 +74,7 @@ fn handle_interrupt(interrupt: Interrupt) {
     }
 }
 
-fn handle_sync_exception(sync_exception: SyncException) {
+fn handle_sync_exception(context: &mut Context, sync_exception: SyncException) {
     println!("Sync exception: {:?}", sync_exception);
     if let SyncException::Reserved { exception_code } = sync_exception {
         panic!("Reserved exception code: {}", exception_code);
@@ -74,35 +85,10 @@ fn handle_sync_exception(sync_exception: SyncException) {
 
     if let SyncException::Trap(Trap::Breakpoint) = sync_exception {
         // `ebreak` is just two-bytes long.
-        increment_sepc(2);
+        context.sepc += 2;
         return;
     }
-    increment_sepc(4);
-}
-
-fn increment_sepc(instruction_size: usize) {
-    println!("Incrementing sepc");
-
-    let sepc_before: usize;
-    unsafe {
-        asm!("csrr {}, sepc", out(reg) sepc_before);
-    }
-
-    // Set PC to the next instruction.
-    unsafe {
-        asm!(
-            "csrr t0, sepc",
-            "add t0, t0, {}",
-            "csrw sepc, t0",
-            in(reg) instruction_size,
-        );
-    }
-
-    let sepc_after: usize;
-    unsafe {
-        asm!("csrr {}, sepc", out(reg) sepc_after);
-    }
-    println!("sepc: {:#x} -> {:#x}", sepc_before, sepc_after);
+    context.sepc += 4;
 }
 
 #[derive(Debug)]
@@ -228,25 +214,12 @@ impl From<Cause> for Exception {
 
 #[derive(Debug)]
 pub struct ExceptionFrame {
-    pub sstatus: Sstatus,
-    pub sepc: usize,
     pub stval: usize,
     pub scause: Exception,
 }
 
 impl ExceptionFrame {
     pub fn new() -> Self {
-        let sstatus: usize;
-        unsafe {
-            asm!("csrr {}, sstatus", out(reg) sstatus);
-        }
-        let sstatus = Sstatus(sstatus);
-
-        let sepc: usize;
-        unsafe {
-            asm!("csrr {}, sepc", out(reg) sepc);
-        }
-
         let stval: usize;
         unsafe {
             asm!("csrr {}, stval", out(reg) stval);
@@ -259,11 +232,6 @@ impl ExceptionFrame {
         let scause = Cause(scause);
         let scause = Exception::from(scause);
 
-        ExceptionFrame {
-            sstatus,
-            sepc,
-            stval,
-            scause,
-        }
+        ExceptionFrame { stval, scause }
     }
 }
