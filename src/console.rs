@@ -5,7 +5,7 @@ use spin::Mutex;
 
 use crate::sbi_call;
 
-pub fn print(s: &str) -> Result<(), isize> {
+pub fn sbi_print(s: &str) -> Result<(), isize> {
     for ch in s.bytes() {
         let res = sbi_call::legacy_sbi_call(&sbi_call::LegacyExtension::ConsolePutChar { ch });
         match res {
@@ -26,7 +26,7 @@ impl Writer {
 
 impl Write for Writer {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        match print(s) {
+        match sbi_print(s) {
             Ok(_) => Ok(()),
             Err(_) => Err(core::fmt::Error),
         }
@@ -37,13 +37,13 @@ lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 }
 
-pub fn _print(args: fmt::Arguments) {
+pub fn fmt_print(args: fmt::Arguments) {
     WRITER.lock().write_fmt(args).unwrap();
 }
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::console::fmt_print(format_args!($($arg)*)));
 }
 
 #[macro_export]

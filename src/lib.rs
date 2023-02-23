@@ -1,7 +1,7 @@
 #![no_std] // don't link the Rust standard library
 
+pub mod console;
 pub mod exception;
-pub mod io;
 pub mod sbi_call;
 
 use core::{fmt, panic::PanicInfo};
