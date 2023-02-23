@@ -33,21 +33,38 @@ impl Write for Writer {
     }
 }
 
+// Why two writers: to avoid deadlock
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new());
+    pub static ref USER_WRITER: Mutex<Writer> = Mutex::new(Writer::new());
+    pub static ref SUPERVISOR_WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 }
 
-pub fn fmt_print(args: fmt::Arguments) {
-    WRITER.lock().write_fmt(args).unwrap();
+pub fn user_fmt_print(args: fmt::Arguments) {
+    USER_WRITER.lock().write_fmt(args).unwrap();
+}
+
+pub fn supervisor_fmt_print(args: fmt::Arguments) {
+    SUPERVISOR_WRITER.lock().write_fmt(args).unwrap();
 }
 
 #[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::console::fmt_print(format_args!($($arg)*)));
+macro_rules! user_print {
+    ($($arg:tt)*) => ($crate::console::user_fmt_print(format_args!($($arg)*)));
 }
 
 #[macro_export]
-macro_rules! println {
-    () => (print!("\n"));
-    ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
+macro_rules! user_println {
+    () => (user_print!("\n"));
+    ($($arg:tt)*) => (user_print!("{}\n", format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! supervisor_print {
+    ($($arg:tt)*) => ($crate::console::supervisor_fmt_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! supervisor_println {
+    () => (supervisor_print!("\n"));
+    ($($arg:tt)*) => (supervisor_print!("{}\n", format_args!($($arg)*)));
 }

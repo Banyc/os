@@ -2,7 +2,7 @@ use core::arch::{asm, global_asm};
 
 mod abi_call;
 
-use crate::{print, println, Sstatus};
+use crate::{supervisor_print, supervisor_println, Sstatus};
 
 pub fn setup_supervisor_exception_handler() {
     unsafe {
@@ -29,24 +29,24 @@ global_asm!(include_str!("entry.asm"));
 
 #[no_mangle]
 pub extern "C" fn handle_exception(register_context: &mut RegisterContext) {
-    println!("Exception");
+    supervisor_println!("Exception");
 
     let mut mut_context = ExceptionMutContext::new(register_context);
-    println!("{:#x?}", mut_context);
+    supervisor_println!("{:#x?}", mut_context);
 
     let immut_context = ExceptionImmutContext::new();
-    println!("{:#x?}", immut_context);
+    supervisor_println!("{:#x?}", immut_context);
 
     match &immut_context.scause {
         Exception::Interrupt(interrupt) => handle_interrupt(&mut mut_context, interrupt),
         Exception::Sync(sync_exception) => handle_sync_exception(&mut mut_context, sync_exception),
     }
 
-    println!("Exception handled");
+    supervisor_println!("Exception handled");
 }
 
 fn handle_interrupt(mut_context: &mut ExceptionMutContext, interrupt: &Interrupt) {
-    println!("Interrupt: {:?}", interrupt);
+    supervisor_println!("Interrupt: {:?}", interrupt);
     if let Interrupt::Reserved { exception_code } = interrupt {
         panic!("Reserved exception code: {}", exception_code);
     }
@@ -58,7 +58,7 @@ fn handle_interrupt(mut_context: &mut ExceptionMutContext, interrupt: &Interrupt
 }
 
 fn handle_sync_exception(mut_context: &mut ExceptionMutContext, sync_exception: &SyncException) {
-    println!("Sync exception: {:?}", sync_exception);
+    supervisor_println!("Sync exception: {:?}", sync_exception);
     if let SyncException::Reserved { exception_code } = sync_exception {
         panic!("Reserved exception code: {}", exception_code);
     }

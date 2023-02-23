@@ -10,7 +10,7 @@ use core::{fmt, panic::PanicInfo};
 /// - `!` means this function never returns.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
+    supervisor_println!("{}", info);
     sbi_call::shutdown();
 }
 

@@ -4,12 +4,13 @@
 use core::arch::asm;
 use core::arch::global_asm;
 
-use os::console;
 use os::exception::enable_supervisor_interrupt;
 use os::exception::setup_supervisor_exception_handler;
-use os::print;
-use os::println;
 use os::sbi_call;
+use os::supervisor_print;
+use os::supervisor_println;
+use os::user_print;
+use os::user_println;
 use os::Sstatus;
 
 static HELLO: &str = "Hello World!";
@@ -21,8 +22,8 @@ global_asm!(include_str!("_start.asm"));
 /// - `extern "C"` ensures the Rust compiler uses the C calling convention for this function.
 #[no_mangle]
 pub extern "C" fn main() {
-    println!();
-    println!("{}", HELLO);
+    supervisor_println!();
+    supervisor_println!("{}", HELLO);
 
     // We are at supervisor mode now.
     let sstatus: usize;
@@ -30,7 +31,7 @@ pub extern "C" fn main() {
         asm!("csrr {}, sstatus", out(reg) sstatus);
     }
     let sstatus = Sstatus(sstatus);
-    println!("{:#x?}", sstatus);
+    supervisor_println!("{:#x?}", sstatus);
 
     setup_supervisor_exception_handler();
 
@@ -54,7 +55,7 @@ pub extern "C" fn main() {
     unsafe {
         asm!("csrr {}, sie", out(reg) sie_after);
     }
-    println!("sie: {:#x} -> {:#x}", sie_before, sie_after);
+    supervisor_println!("sie: {:#x} -> {:#x}", sie_before, sie_after);
 
     // Trigger timer interrupt.
     sbi_call::set_timer(0).expect("Failed to set timer");
@@ -79,7 +80,8 @@ pub extern "C" fn main() {
 
 #[no_mangle]
 pub extern "C" fn user_pit() -> ! {
-    let _ = console::sbi_print("U");
+    user_println!();
+    user_println!("User mode");
 
     unsafe {
         asm!("ebreak");
