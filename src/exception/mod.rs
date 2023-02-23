@@ -1,5 +1,7 @@
 use core::arch::{asm, global_asm};
 
+mod abi_call;
+
 use crate::{print, println, Sstatus};
 
 pub fn setup_supervisor_exception_handler() {
@@ -60,14 +62,15 @@ fn handle_sync_exception(mut_context: &mut ExceptionMutContext, sync_exception: 
     if let SyncException::Reserved { exception_code } = sync_exception {
         panic!("Reserved exception code: {}", exception_code);
     }
-    if let SyncException::Trap(Trap::EnvironmentCallFromUMode) = sync_exception {
-        panic!("Not implemented: EnvironmentCallFromUMode");
-    }
 
     if let SyncException::Trap(Trap::Breakpoint) = sync_exception {
         // `ebreak` is just two-bytes long.
         mut_context.sepc += 2;
         return;
+    }
+
+    if let SyncException::Trap(Trap::EnvironmentCallFromUMode) = sync_exception {
+        abi_call::abi_call(mut_context);
     }
     mut_context.sepc += 4;
 }

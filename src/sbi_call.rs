@@ -181,3 +181,35 @@ impl BaseFunction {
         }
     }
 }
+
+pub enum CompatibleSbi {
+    Legacy(LegacyExtension),
+    Extension(Extension),
+}
+
+pub fn decode_sbi_call(a0: usize, a1: usize, a6: usize, a7: usize) -> CompatibleSbi {
+    match a7 {
+        0x1 => CompatibleSbi::Legacy(LegacyExtension::ConsolePutChar { ch: a0 as u8 }),
+        0x2 => CompatibleSbi::Legacy(LegacyExtension::ConsoleGetChar),
+        0x10 => match a6 {
+            0 => CompatibleSbi::Extension(Extension::Base(BaseFunction::GetSpecVersion)),
+            1 => CompatibleSbi::Extension(Extension::Base(BaseFunction::GetImplId)),
+            2 => CompatibleSbi::Extension(Extension::Base(BaseFunction::GetImplVersion)),
+            3 => CompatibleSbi::Extension(Extension::Base(BaseFunction::ProbeExtension {
+                extension_id: a0 as isize,
+            })),
+            4 => CompatibleSbi::Extension(Extension::Base(BaseFunction::GetMVendorId)),
+            5 => CompatibleSbi::Extension(Extension::Base(BaseFunction::GetMArchId)),
+            6 => CompatibleSbi::Extension(Extension::Base(BaseFunction::GetMImpId)),
+            _ => panic!("Unknown base function"),
+        },
+        0x54494D45 => CompatibleSbi::Extension(Extension::SetTimer {
+            stime_value: (a0 as u64) | ((a1 as u64) << 32),
+        }),
+        0x735049 => CompatibleSbi::Extension(Extension::SendIpi {
+            hart_mask: a0 as usize,
+        }),
+        0x53525354 => CompatibleSbi::Extension(Extension::Shutdown),
+        _ => panic!("Unknown SBI function"),
+    }
+}

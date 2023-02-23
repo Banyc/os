@@ -4,6 +4,7 @@
 use core::arch::asm;
 use core::arch::global_asm;
 
+use os::console;
 use os::exception::enable_supervisor_interrupt;
 use os::exception::setup_supervisor_exception_handler;
 use os::print;
@@ -78,14 +79,11 @@ pub extern "C" fn main() {
 
 #[no_mangle]
 pub extern "C" fn user_pit() -> ! {
+    let _ = console::sbi_print("U");
+
     unsafe {
         asm!("ebreak");
-        asm!("ecall");
     }
 
-    loop {
-        unsafe {
-            asm!("wfi");
-        }
-    }
+    loop {}
 }
