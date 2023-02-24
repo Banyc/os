@@ -6,10 +6,12 @@ use crate::{supervisor_print, supervisor_println, Sstatus};
 
 pub fn setup_supervisor_exception_handler() {
     unsafe {
+        extern "C" {
+            fn __exception_entry();
+        }
         asm!(
-            "la t0, __exception_entry",
-            "csrw stvec, t0",
-            //
+            "csrw stvec, {}",
+            in(reg) __exception_entry as usize,
         );
     }
 }
