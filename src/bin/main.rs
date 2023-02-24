@@ -58,9 +58,8 @@ pub extern "C" fn main() {
     // Set sepc to the pit.
     unsafe {
         asm!(
-            "la t0, user_pit",
-            "csrw sepc, t0",
-            //
+            "csrw sepc, {}",
+            in (reg) user_pit,
         );
     }
 
