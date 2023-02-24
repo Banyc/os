@@ -1,8 +1,14 @@
 use core::arch::{asm, global_asm};
 
 mod abi_call;
+mod fault;
+mod interrupt;
+mod trap;
 
-use crate::{supervisor_print, supervisor_println, Sstatus};
+use crate::{
+    exception::{fault::handle_fault, interrupt::handle_interrupt, trap::handle_trap},
+    Sstatus,
+};
 
 pub fn setup_supervisor_exception_handler() {
     unsafe {
@@ -31,50 +37,21 @@ global_asm!(include_str!("entry.asm"));
 
 #[no_mangle]
 pub extern "C" fn handle_exception(register_context: &mut RegisterContext) {
-    supervisor_println!("Exception");
-
     let mut mut_context = ExceptionMutContext::new(register_context);
-    supervisor_println!("{:#x?}", mut_context);
-
     let immut_context = ExceptionImmutContext::new();
-    supervisor_println!("{:#x?}", immut_context);
 
     match &immut_context.scause {
-        Exception::Interrupt(interrupt) => handle_interrupt(&mut mut_context, interrupt),
-        Exception::Sync(sync_exception) => handle_sync_exception(&mut mut_context, sync_exception),
+        Exception::Interrupt(interrupt) => {
+            handle_interrupt(&mut mut_context, immut_context.stval, interrupt)
+        }
+        Exception::Sync(SyncException::Fault(fault)) => {
+            handle_fault(&mut mut_context, immut_context.stval, fault)
+        }
+        Exception::Sync(SyncException::Trap(trap)) => {
+            handle_trap(&mut mut_context, immut_context.stval, trap)
+        }
+        _ => panic!("Unhandled exception: {:?}", immut_context.scause),
     }
-
-    supervisor_println!("Exception handled");
-}
-
-fn handle_interrupt(mut_context: &mut ExceptionMutContext, interrupt: &Interrupt) {
-    supervisor_println!("Interrupt: {:?}", interrupt);
-    if let Interrupt::Reserved { exception_code } = interrupt {
-        panic!("Reserved exception code: {}", exception_code);
-    }
-
-    // Disable interrupt.
-    let sie = mut_context.sie;
-    let sie = sie & !(1 << interrupt.exception_code() as usize);
-    mut_context.sie = sie;
-}
-
-fn handle_sync_exception(mut_context: &mut ExceptionMutContext, sync_exception: &SyncException) {
-    supervisor_println!("Sync exception: {:?}", sync_exception);
-    if let SyncException::Reserved { exception_code } = sync_exception {
-        panic!("Reserved exception code: {}", exception_code);
-    }
-
-    if let SyncException::Trap(Trap::Breakpoint) = sync_exception {
-        // `ebreak` is just two-bytes long.
-        mut_context.sepc += 2;
-        return;
-    }
-
-    if let SyncException::Trap(Trap::EnvironmentCallFromUMode) = sync_exception {
-        abi_call::abi_call(mut_context);
-    }
-    mut_context.sepc += 4;
 }
 
 #[derive(Debug)]

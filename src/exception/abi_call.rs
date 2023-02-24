@@ -1,4 +1,4 @@
-use crate::{sbi_call, supervisor_print, supervisor_println};
+use crate::sbi_call;
 
 use super::ExceptionMutContext;
 
@@ -8,8 +8,6 @@ const A6: usize = 16;
 const A7: usize = 17;
 
 pub fn abi_call(mut_context: &mut ExceptionMutContext) {
-    supervisor_println!("Abi call");
-
     let sbi = sbi_call::decode_sbi_call(
         mut_context.register_context.x[A0],
         mut_context.register_context.x[A1],

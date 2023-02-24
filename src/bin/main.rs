@@ -22,6 +22,8 @@ global_asm!(include_str!("_start.asm"));
 /// - `extern "C"` ensures the Rust compiler uses the C calling convention for this function.
 #[no_mangle]
 pub extern "C" fn main() {
+    setup_supervisor_exception_handler();
+
     supervisor_println!();
     supervisor_println!("{}", HELLO);
 
@@ -32,13 +34,6 @@ pub extern "C" fn main() {
     }
     let sstatus = Sstatus(sstatus);
     supervisor_println!("{:#x?}", sstatus);
-
-    setup_supervisor_exception_handler();
-
-    // Accessing machine mode CSR in supervisor mode will cause an exception.
-    unsafe {
-        asm!("csrr t0, mstatus");
-    }
 
     // Breakpoint
     unsafe {
